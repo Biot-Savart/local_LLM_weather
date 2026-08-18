@@ -1,0 +1,13 @@
+# GitLab CI/CD configuration for GitLab Pages deployment
+image: alpine:latest
+
+pages:
+  stage: deploy
+  script:
+    - mkdir -p public
+    - cp -r index.html css js assets public/ 2>/dev/null || cp -r index.html css js public/
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
