@@ -20,8 +20,8 @@ class WeatherCharts {
 		const canvas = document.getElementById('hourlyChartCanvas');
 		if (!canvas || !window.Chart) return;
 
-		const hourly = forecastData.hourly;
-		if (!hourly || !hourly.time) return;
+		const hourly = forecastData?.hourly;
+		if (!hourly || !hourly.time || !Array.isArray(hourly.time)) return;
 
 		// Take next 24-36 hours
 		const limit = 24;

@@ -8,16 +8,87 @@ class WeatherApp {
 		this.init();
 	}
 
+	/**
+	 * Safe DOM Element Selector Helper
+	 * Resolves by ID or CSS selector without throwing errors
+	 */
+	getElement(selectorOrId) {
+		if (!selectorOrId) return null;
+		if (typeof selectorOrId !== 'string') return selectorOrId;
+		if (
+			selectorOrId.startsWith('#') ||
+			selectorOrId.startsWith('.') ||
+			selectorOrId.includes(' ') ||
+			selectorOrId.includes('[')
+		) {
+			return document.querySelector(selectorOrId);
+		}
+		return (
+			document.getElementById(selectorOrId) ||
+			document.querySelector(selectorOrId)
+		);
+	}
+
+	/**
+	 * Null-safe textContent setter
+	 */
+	setText(selectorOrId, text) {
+		const el = this.getElement(selectorOrId);
+		if (el) {
+			el.textContent = text ?? '';
+		}
+		return el;
+	}
+
+	/**
+	 * Null-safe innerHTML setter
+	 */
+	setHtml(selectorOrId, html) {
+		const el = this.getElement(selectorOrId);
+		if (el) {
+			el.innerHTML = html ?? '';
+		}
+		return el;
+	}
+
+	/**
+	 * Null-safe value setter
+	 */
+	setValue(selectorOrId, value) {
+		const el = this.getElement(selectorOrId);
+		if (el) {
+			el.value = value ?? '';
+		}
+		return el;
+	}
+
+	/**
+	 * Null-safe class toggler
+	 */
+	toggleClass(selectorOrId, className, force) {
+		const el = this.getElement(selectorOrId);
+		if (el) {
+			if (typeof force === 'boolean') {
+				el.classList.toggle(className, force);
+			} else {
+				el.classList.toggle(className);
+			}
+		}
+		return el;
+	}
+
 	async init() {
 		// 1. Initialize Canvas Background Atmosphere
 		this.atmosphere = new window.CanvasAtmosphere('weatherCanvas');
 
 		// 2. Initialize Leaflet Map
-		window.weatherMap.onLocationSelect = async (lat, lon) => {
-			this.showLoading(true);
-			const loc = await window.weatherAPI.reverseGeocode(lat, lon);
-			await this.loadLocationWeather(loc);
-		};
+		if (window.weatherMap) {
+			window.weatherMap.onLocationSelect = async (lat, lon) => {
+				this.showLoading(true);
+				const loc = await window.weatherAPI.reverseGeocode(lat, lon);
+				await this.loadLocationWeather(loc);
+			};
+		}
 
 		// 3. Setup UI Event Listeners
 		this.bindEvents();
@@ -34,27 +105,32 @@ class WeatherApp {
 	 */
 	bindEvents() {
 		// Search input autocomplete
-		const searchInput = document.getElementById('citySearchInput');
-		const searchResults = document.getElementById('searchResultsDropdown');
+		const searchInput = this.getElement('citySearchInput');
+		const searchResults = this.getElement('searchResultsDropdown');
 
 		if (searchInput) {
 			searchInput.addEventListener('input', (e) => {
 				const q = e.target.value;
 				clearTimeout(this.searchDebounceTimer);
 				if (q.trim().length < 2) {
-					searchResults.classList.remove('active');
-					searchResults.innerHTML = '';
+					if (searchResults) {
+						searchResults.classList.remove('active');
+						searchResults.innerHTML = '';
+					}
 					return;
 				}
 				this.searchDebounceTimer = setTimeout(async () => {
 					const results = await window.weatherAPI.searchLocations(q);
-					this.renderSearchResults(results, searchResults);
+					if (searchResults) {
+						this.renderSearchResults(results, searchResults);
+					}
 				}, 250);
 			});
 
 			// Close dropdown when clicked outside
 			document.addEventListener('click', (e) => {
 				if (
+					searchResults &&
 					!searchInput.contains(e.target) &&
 					!searchResults.contains(e.target)
 				) {
@@ -64,13 +140,13 @@ class WeatherApp {
 		}
 
 		// Geolocation button
-		const geoBtn = document.getElementById('currentLocationBtn');
+		const geoBtn = this.getElement('currentLocationBtn');
 		if (geoBtn) {
 			geoBtn.addEventListener('click', () => this.autoDetectLocation(true));
 		}
 
 		// Save/Favorite button
-		const saveLocBtn = document.getElementById('saveLocationBtn');
+		const saveLocBtn = this.getElement('saveLocationBtn');
 		if (saveLocBtn) {
 			saveLocBtn.addEventListener('click', () => {
 				if (window.state.currentLocation) {
@@ -87,8 +163,8 @@ class WeatherApp {
 		}
 
 		// Time Scrubber Slider
-		const scrubber = document.getElementById('timeScrubber');
-		const resetScrubberBtn = document.getElementById('resetScrubberBtn');
+		const scrubber = this.getElement('timeScrubber');
+		const resetScrubberBtn = this.getElement('resetScrubberBtn');
 
 		if (scrubber) {
 			scrubber.addEventListener('input', (e) => {
@@ -100,9 +176,8 @@ class WeatherApp {
 		if (resetScrubberBtn) {
 			resetScrubberBtn.addEventListener('click', () => {
 				window.state.scrubberActive = false;
-				scrubber.value = 0;
-				document.getElementById('scrubberTimeDisplay').textContent =
-					'Live (Now)';
+				if (scrubber) scrubber.value = 0;
+				this.setText('scrubberTimeDisplay', 'Live (Now)');
 				resetScrubberBtn.classList.remove('active');
 				this.updateCurrentDisplay();
 			});
@@ -116,7 +191,7 @@ class WeatherApp {
 					.forEach((b) => b.classList.remove('active'));
 				btn.classList.add('active');
 				const tab = btn.dataset.tab;
-				if (window.state.currentWeather) {
+				if (window.state.currentWeather && window.weatherCharts) {
 					window.weatherCharts.setTab(
 						tab,
 						window.state.currentWeather,
@@ -129,8 +204,8 @@ class WeatherApp {
 		});
 
 		// Audio Soundscape Controls
-		const audioToggle = document.getElementById('audioToggleBtn');
-		const audioVolSlider = document.getElementById('audioVolumeSlider');
+		const audioToggle = this.getElement('audioToggleBtn');
+		const audioVolSlider = this.getElement('audioVolumeSlider');
 
 		if (audioToggle) {
 			audioToggle.addEventListener('click', () => {
@@ -144,15 +219,17 @@ class WeatherApp {
 			audioVolSlider.addEventListener('input', (e) => {
 				const vol = parseFloat(e.target.value);
 				window.state.setPref('audioVolume', vol);
-				window.weatherAudio.setVolume(vol);
+				if (window.weatherAudio) {
+					window.weatherAudio.setVolume(vol);
+				}
 			});
 		}
 
 		// Export / Share Card Modal
-		const exportBtn = document.getElementById('exportCardBtn');
-		const exportModal = document.getElementById('exportModal');
-		const closeExportModal = document.getElementById('closeExportModal');
-		const downloadCardBtn = document.getElementById('downloadCardBtn');
+		const exportBtn = this.getElement('exportCardBtn');
+		const exportModal = this.getElement('exportModal');
+		const closeExportModal = this.getElement('closeExportModal');
+		const downloadCardBtn = this.getElement('downloadCardBtn');
 
 		if (exportBtn && exportModal) {
 			exportBtn.addEventListener('click', async () => {
@@ -161,7 +238,7 @@ class WeatherApp {
 			});
 		}
 
-		if (closeExportModal) {
+		if (closeExportModal && exportModal) {
 			closeExportModal.addEventListener('click', () => {
 				exportModal.classList.remove('active');
 			});
@@ -169,7 +246,11 @@ class WeatherApp {
 
 		if (downloadCardBtn) {
 			downloadCardBtn.addEventListener('click', async () => {
-				if (window.state.currentLocation && window.state.currentWeather) {
+				if (
+					window.state.currentLocation &&
+					window.state.currentWeather &&
+					window.cardExporter
+				) {
 					await window.cardExporter.downloadCard(
 						window.state.currentLocation,
 						window.state.currentWeather.current,
@@ -184,13 +265,11 @@ class WeatherApp {
 		}
 
 		// City Comparison Tool Modal
-		const compareBtn = document.getElementById('compareCitiesBtn');
-		const compareModal = document.getElementById('compareModal');
-		const closeCompareModal = document.getElementById('closeCompareModal');
-		const compareSearchInput = document.getElementById('compareCitySearch');
-		const compareSearchResults = document.getElementById(
-			'compareSearchResults',
-		);
+		const compareBtn = this.getElement('compareCitiesBtn');
+		const compareModal = this.getElement('compareModal');
+		const closeCompareModal = this.getElement('closeCompareModal');
+		const compareSearchInput = this.getElement('compareCitySearch');
+		const compareSearchResults = this.getElement('compareSearchResults');
 
 		if (compareBtn && compareModal) {
 			compareBtn.addEventListener('click', () => {
@@ -199,13 +278,13 @@ class WeatherApp {
 			});
 		}
 
-		if (closeCompareModal) {
+		if (closeCompareModal && compareModal) {
 			closeCompareModal.addEventListener('click', () => {
 				compareModal.classList.remove('active');
 			});
 		}
 
-		if (compareSearchInput) {
+		if (compareSearchInput && compareSearchResults) {
 			compareSearchInput.addEventListener('input', (e) => {
 				const q = e.target.value;
 				if (q.trim().length < 2) {
@@ -217,10 +296,10 @@ class WeatherApp {
 					compareSearchResults.innerHTML = results
 						.map(
 							(loc) => `
-            <div class="search-result-item" data-lat="${loc.latitude}" data-lon="${loc.longitude}" data-name="${loc.name}" data-country="${loc.country}">
-              <span>${window.weatherAPI.getCountryFlagEmoji(loc.country_code)} <b>${loc.name}</b>, ${loc.country}</span>
-            </div>
-          `,
+	           <div class="search-result-item" data-lat="${loc.latitude}" data-lon="${loc.longitude}" data-name="${loc.name}" data-country="${loc.country}">
+	             <span>${window.weatherAPI.getCountryFlagEmoji(loc.country_code)} <b>${loc.name}</b>, ${loc.country}</span>
+	           </div>
+	         `,
 						)
 						.join('');
 
@@ -247,16 +326,16 @@ class WeatherApp {
 		}
 
 		// Settings & Unit Switches
-		const settingsBtn = document.getElementById('settingsBtn');
-		const settingsModal = document.getElementById('settingsModal');
-		const closeSettingsModal = document.getElementById('closeSettingsModal');
+		const settingsBtn = this.getElement('settingsBtn');
+		const settingsModal = this.getElement('settingsModal');
+		const closeSettingsModal = this.getElement('closeSettingsModal');
 
 		if (settingsBtn && settingsModal) {
 			settingsBtn.addEventListener('click', () =>
 				settingsModal.classList.add('active'),
 			);
 		}
-		if (closeSettingsModal) {
+		if (closeSettingsModal && settingsModal) {
 			closeSettingsModal.addEventListener('click', () =>
 				settingsModal.classList.remove('active'),
 			);
@@ -377,14 +456,16 @@ class WeatherApp {
 			window.state.historicalWeather = historicalData;
 
 			// Update Map view
-			const tempStr = `${window.weatherAPI.convertTemp(forecastData.current.temperature_2m, window.state.prefs.tempUnit)}°`;
-			window.weatherMap.setView(
-				lat,
-				lon,
-				9,
-				`${location.name}, ${location.country}`,
-				tempStr,
-			);
+			if (window.weatherMap && forecastData?.current) {
+				const tempStr = `${window.weatherAPI.convertTemp(forecastData.current.temperature_2m, window.state.prefs.tempUnit)}°`;
+				window.weatherMap.setView(
+					lat,
+					lon,
+					9,
+					`${location.name}, ${location.country}`,
+					tempStr,
+				);
+			}
 
 			// Render all widgets
 			this.updateSaveButtonState(window.state.isLocationSaved(lat, lon));
@@ -397,12 +478,14 @@ class WeatherApp {
 			this.renderHistoricalComparison();
 
 			// Render Charts
-			window.weatherCharts.renderHourlyChart(
-				forecastData,
-				airData,
-				window.state.prefs.tempUnit,
-				window.state.prefs.windUnit,
-			);
+			if (window.weatherCharts) {
+				window.weatherCharts.renderHourlyChart(
+					forecastData,
+					airData,
+					window.state.prefs.tempUnit,
+					window.state.prefs.windUnit,
+				);
+			}
 
 			// Trigger Audio atmosphere if enabled
 			this.updateAudioState();
@@ -418,6 +501,8 @@ class WeatherApp {
 	 * Render search results dropdown
 	 */
 	renderSearchResults(results, container) {
+		if (!container) return;
+
 		if (!results || results.length === 0) {
 			container.innerHTML =
 				'<div class="search-empty">No matching cities found</div>';
@@ -428,15 +513,15 @@ class WeatherApp {
 		container.innerHTML = results
 			.map(
 				(loc) => `
-      <div class="search-result-item" data-lat="${loc.latitude}" data-lon="${loc.longitude}" data-name="${loc.name}" data-admin="${loc.admin1}" data-country="${loc.country}" data-code="${loc.country_code}" data-tz="${loc.timezone}">
-        <div class="search-item-flag">${window.weatherAPI.getCountryFlagEmoji(loc.country_code)}</div>
-        <div class="search-item-info">
-          <div class="search-item-name">${loc.name}</div>
-          <div class="search-item-sub">${[loc.admin1, loc.country].filter(Boolean).join(', ')}</div>
-        </div>
-        <div class="search-item-coords">${loc.latitude.toFixed(2)}°, ${loc.longitude.toFixed(2)}°</div>
-      </div>
-    `,
+			   <div class="search-result-item" data-lat="${loc.latitude}" data-lon="${loc.longitude}" data-name="${loc.name}" data-admin="${loc.admin1}" data-country="${loc.country}" data-code="${loc.country_code}" data-tz="${loc.timezone}">
+			     <div class="search-item-flag">${window.weatherAPI.getCountryFlagEmoji(loc.country_code)}</div>
+			     <div class="search-item-info">
+			       <div class="search-item-name">${loc.name}</div>
+			       <div class="search-item-sub">${[loc.admin1, loc.country].filter(Boolean).join(', ')}</div>
+			     </div>
+			     <div class="search-item-coords">${loc.latitude.toFixed(2)}°, ${loc.longitude.toFixed(2)}°</div>
+			   </div>
+			 `,
 			)
 			.join('');
 
@@ -456,7 +541,7 @@ class WeatherApp {
 				};
 
 				container.classList.remove('active');
-				document.getElementById('citySearchInput').value = '';
+				this.setValue('citySearchInput', '');
 				await this.loadLocationWeather(location);
 			});
 		});
@@ -468,7 +553,7 @@ class WeatherApp {
 	updateCurrentDisplay() {
 		const loc = window.state.currentLocation;
 		const forecast = window.state.currentWeather;
-		if (!loc || !forecast) return;
+		if (!loc || !forecast || !forecast.current) return;
 
 		let current = forecast.current;
 		let isLive = true;
@@ -479,20 +564,23 @@ class WeatherApp {
 			const h = forecast.hourly;
 			isLive = false;
 			current = {
-				temperature_2m: h.temperature_2m[idx],
-				apparent_temperature: h.apparent_temperature[idx],
-				relative_humidity_2m: h.relative_humidity_2m[idx],
-				weather_code: h.weather_code[idx],
-				wind_speed_10m: h.wind_speed_10m[idx],
-				wind_direction_10m: h.wind_direction_10m[idx],
+				temperature_2m: h.temperature_2m?.[idx] ?? current.temperature_2m,
+				apparent_temperature:
+					h.apparent_temperature?.[idx] ?? current.apparent_temperature,
+				relative_humidity_2m:
+					h.relative_humidity_2m?.[idx] ?? current.relative_humidity_2m,
+				weather_code: h.weather_code?.[idx] ?? current.weather_code,
+				wind_speed_10m: h.wind_speed_10m?.[idx] ?? current.wind_speed_10m,
+				wind_direction_10m:
+					h.wind_direction_10m?.[idx] ?? current.wind_direction_10m,
 				wind_gusts_10m: h.wind_gusts_10m
 					? h.wind_gusts_10m[idx]
-					: h.wind_speed_10m[idx],
-				surface_pressure: h.surface_pressure[idx],
-				uv_index: h.uv_index ? h.uv_index[idx] : 0,
-				cloud_cover: h.cloud_cover[idx],
-				precipitation: h.precipitation[idx],
-				is_day: h.is_day ? h.is_day[idx] : 1,
+					: (h.wind_speed_10m?.[idx] ?? current.wind_speed_10m),
+				surface_pressure: h.surface_pressure?.[idx] ?? current.surface_pressure,
+				uv_index: h.uv_index ? (h.uv_index[idx] ?? 0) : 0,
+				cloud_cover: h.cloud_cover?.[idx] ?? current.cloud_cover,
+				precipitation: h.precipitation?.[idx] ?? current.precipitation,
+				is_day: h.is_day ? (h.is_day[idx] ?? 1) : 1,
 			};
 		}
 
@@ -504,31 +592,41 @@ class WeatherApp {
 		);
 
 		// Update Atmosphere Dynamic Canvas
-		this.atmosphere.setAtmosphere(
-			codeInfo.atmosphere,
-			isDay,
-			current.cloud_cover || 20,
-			current.wind_speed_10m || 10,
-			current.wind_direction_10m || 90,
-		);
+		if (this.atmosphere?.setAtmosphere) {
+			this.atmosphere.setAtmosphere(
+				codeInfo.atmosphere,
+				isDay,
+				current.cloud_cover || 20,
+				current.wind_speed_10m || 10,
+				current.wind_direction_10m || 90,
+			);
+		}
 
 		// Update Hero elements
 		const flag = window.weatherAPI.getCountryFlagEmoji(loc.country_code);
-		document.getElementById('cityName').innerHTML = `${flag} ${loc.name}`;
-		document.getElementById('cityCountry').textContent =
-			[loc.admin1, loc.country].filter(Boolean).join(', ') || 'Global Location';
+		this.setHtml('cityName', `${flag} ${loc.name}`);
+		this.setText(
+			'cityCountry',
+			[loc.admin1, loc.country].filter(Boolean).join(', ') || 'Global Location',
+		);
 
-		document.getElementById('currentTemp').textContent =
-			`${window.weatherAPI.convertTemp(current.temperature_2m, tempUnit)}°`;
-		document.getElementById('currentConditionLabel').textContent =
-			codeInfo.label;
-		document.getElementById('currentConditionDesc').textContent =
-			codeInfo.description;
-		document.getElementById('feelsLikeTemp').textContent =
-			`${window.weatherAPI.convertTemp(current.apparent_temperature, tempUnit)}°${tempUnit.toUpperCase()}`;
+		this.setText(
+			'currentTemp',
+			`${window.weatherAPI.convertTemp(current.temperature_2m, tempUnit)}°`,
+		);
+		this.setText('currentConditionLabel', codeInfo.label);
+		this.setText('currentConditionDesc', codeInfo.description);
+		this.setText(
+			'feelsLikeTemp',
+			`${window.weatherAPI.convertTemp(current.apparent_temperature, tempUnit)}°${tempUnit.toUpperCase()}`,
+		);
 
 		// Daily High / Low
-		if (forecast.daily) {
+		if (
+			forecast.daily &&
+			Array.isArray(forecast.daily.temperature_2m_max) &&
+			forecast.daily.temperature_2m_max.length > 0
+		) {
 			const maxT = window.weatherAPI.convertTemp(
 				forecast.daily.temperature_2m_max[0],
 				tempUnit,
@@ -537,25 +635,32 @@ class WeatherApp {
 				forecast.daily.temperature_2m_min[0],
 				tempUnit,
 			);
-			document.getElementById('heroHighLow').textContent =
-				`H: ${maxT}°  •  L: ${minT}°`;
+			this.setText('heroHighLow', `H: ${maxT}°  •  L: ${minT}°`);
 		}
 
 		// Hero Metric Badges
-		document.getElementById('windMetric').textContent =
-			`${window.weatherAPI.convertWind(current.wind_speed_10m, windUnit)} ${windUnit}`;
-		document.getElementById('windDirMetric').textContent =
-			`${window.weatherAPI.getWindDirectionCompass(current.wind_direction_10m)} (${Math.round(current.wind_direction_10m || 0)}°)`;
-		document.getElementById('humidityMetric').textContent =
-			`${current.relative_humidity_2m || 0}%`;
-		document.getElementById('uvMetric').textContent =
-			`${current.uv_index || 0} (${window.lifestyle.calcUVIndex(current.uv_index).level})`;
-		document.getElementById('pressureMetric').textContent =
-			`${window.weatherAPI.convertPressure(current.surface_pressure, pressureUnit)} ${pressureUnit}`;
-		document.getElementById('cloudMetric').textContent =
-			`${current.cloud_cover || 0}%`;
-		document.getElementById('precipMetric').textContent =
-			`${window.weatherAPI.convertPrecip(current.precipitation || 0, precipUnit)} ${precipUnit}`;
+		this.setText(
+			'windMetric',
+			`${window.weatherAPI.convertWind(current.wind_speed_10m, windUnit)} ${windUnit}`,
+		);
+		this.setText(
+			'windDirMetric',
+			`${window.weatherAPI.getWindDirectionCompass(current.wind_direction_10m)} (${Math.round(current.wind_direction_10m || 0)}°)`,
+		);
+		this.setText('humidityMetric', `${current.relative_humidity_2m || 0}%`);
+		this.setText(
+			'uvMetric',
+			`${current.uv_index || 0} (${window.lifestyle?.calcUVIndex ? window.lifestyle.calcUVIndex(current.uv_index).level : 'Low'})`,
+		);
+		this.setText(
+			'pressureMetric',
+			`${window.weatherAPI.convertPressure(current.surface_pressure, pressureUnit)} ${pressureUnit}`,
+		);
+		this.setText('cloudMetric', `${current.cloud_cover || 0}%`);
+		this.setText(
+			'precipMetric',
+			`${window.weatherAPI.convertPrecip(current.precipitation || 0, precipUnit)} ${precipUnit}`,
+		);
 	}
 
 	/**
@@ -563,7 +668,13 @@ class WeatherApp {
 	 */
 	handleTimeScrubber(hourIdx) {
 		const forecast = window.state.currentWeather;
-		if (!forecast || !forecast.hourly || !forecast.hourly.time[hourIdx]) return;
+		if (
+			!forecast ||
+			!forecast.hourly ||
+			!forecast.hourly.time ||
+			!forecast.hourly.time[hourIdx]
+		)
+			return;
 
 		window.state.scrubberActive = true;
 		window.state.scrubberHourIndex = hourIdx;
@@ -577,9 +688,12 @@ class WeatherApp {
 			hour12: false,
 		});
 
-		document.getElementById('scrubberTimeDisplay').textContent =
-			hourIdx === 0 ? 'Live (Now)' : `Simulation: ${timeStr}`;
-		document.getElementById('resetScrubberBtn').classList.add('active');
+		this.setText(
+			'scrubberTimeDisplay',
+			hourIdx === 0 ? 'Live (Now)' : `Simulation: ${timeStr}`,
+		);
+		const resetBtn = this.getElement('resetScrubberBtn');
+		if (resetBtn) resetBtn.classList.add('active');
 
 		this.updateCurrentDisplay();
 	}
@@ -589,8 +703,8 @@ class WeatherApp {
 	 */
 	renderDailyForecast() {
 		const daily = window.state.currentWeather?.daily;
-		const container = document.getElementById('dailyForecastContainer');
-		if (!daily || !container) return;
+		const container = this.getElement('dailyForecastContainer');
+		if (!daily || !daily.time || !container) return;
 
 		const { tempUnit } = window.state.prefs;
 		container.innerHTML = '';
@@ -641,8 +755,8 @@ class WeatherApp {
 	 */
 	renderHourlyCards() {
 		const hourly = window.state.currentWeather?.hourly;
-		const container = document.getElementById('hourlyCardsContainer');
-		if (!hourly || !container) return;
+		const container = this.getElement('hourlyCardsContainer');
+		if (!hourly || !hourly.time || !container) return;
 
 		const { tempUnit, windUnit } = window.state.prefs;
 		container.innerHTML = '';
@@ -657,23 +771,25 @@ class WeatherApp {
 							minute: '2-digit',
 							hour12: false,
 						});
-			const code = hourly.weather_code[i];
+			const code = hourly.weather_code ? hourly.weather_code[i] : 0;
 			const isDay = hourly.is_day ? hourly.is_day[i] : 1;
 			const info = window.weatherAPI.getWeatherCodeInfo(code, isDay);
 			const temp = window.weatherAPI.convertTemp(
-				hourly.temperature_2m[i],
+				hourly.temperature_2m ? hourly.temperature_2m[i] : 0,
 				tempUnit,
 			);
-			const rainProb = hourly.precipitation_probability[i] || 0;
+			const rainProb = hourly.precipitation_probability
+				? hourly.precipitation_probability[i] || 0
+				: 0;
 
 			const item = document.createElement('div');
 			item.className = 'hourly-card';
 			item.innerHTML = `
-        <div class="hourly-time">${hourStr}</div>
-        <div class="hourly-icon"><i class="fa-solid fa-${info.icon}"></i></div>
-        <div class="hourly-temp">${temp}°</div>
-        <div class="hourly-rain">${rainProb > 0 ? `💧 ${rainProb}%` : ''}</div>
-      `;
+	       <div class="hourly-time">${hourStr}</div>
+	       <div class="hourly-icon"><i class="fa-solid fa-${info.icon}"></i></div>
+	       <div class="hourly-temp">${temp}°</div>
+	       <div class="hourly-rain">${rainProb > 0 ? `💧 ${rainProb}%` : ''}</div>
+	     `;
 			container.appendChild(item);
 		}
 	}
@@ -683,9 +799,9 @@ class WeatherApp {
 	 */
 	renderAstronomy() {
 		const daily = window.state.currentWeather?.daily;
-		const containerArc = document.getElementById('solarArcWrapper');
-		const containerMoon = document.getElementById('moonPhaseWrapper');
-		if (!daily || !containerArc || !containerMoon) return;
+		const containerArc = this.getElement('solarArcWrapper');
+		const containerMoon = this.getElement('moonPhaseWrapper');
+		if (!daily || !containerArc || !containerMoon || !window.astronomy) return;
 
 		const sunrise = daily.sunrise ? daily.sunrise[0] : null;
 		const sunset = daily.sunset ? daily.sunset[0] : null;
@@ -696,23 +812,24 @@ class WeatherApp {
 		);
 		containerArc.innerHTML = window.astronomy.renderSolarArcSVG(solarMetrics);
 
-		document.getElementById('dayDuration').textContent =
-			solarMetrics.dayDuration;
-		document.getElementById('goldenHour').textContent =
-			`${solarMetrics.goldenHourMorning} / ${solarMetrics.goldenHourEvening}`;
+		this.setText('dayDuration', solarMetrics.dayDuration);
+		this.setText(
+			'goldenHour',
+			`${solarMetrics.goldenHourMorning} / ${solarMetrics.goldenHourEvening}`,
+		);
 
 		// Moon phase
 		const moon = window.astronomy.getMoonPhase(new Date());
 		containerMoon.innerHTML = `
-      <div class="moon-visual">
-        ${window.astronomy.renderMoonSVG(moon.phaseRatio, 72)}
-      </div>
-      <div class="moon-details">
-        <div class="moon-name">${moon.phaseIcon} ${moon.phaseName}</div>
-        <div class="moon-illum">${moon.illuminationPercent}% Illumination</div>
-        <div class="moon-cycle">Day ${moon.daysIntoCycle} of 29.5-day cycle</div>
-      </div>
-    `;
+	     <div class="moon-visual">
+	       ${window.astronomy.renderMoonSVG(moon.phaseRatio, 72)}
+	     </div>
+	     <div class="moon-details">
+	       <div class="moon-name">${moon.phaseIcon} ${moon.phaseName}</div>
+	       <div class="moon-illum">${moon.illuminationPercent}% Illumination</div>
+	       <div class="moon-cycle">Day ${moon.daysIntoCycle} of 29.5-day cycle</div>
+	     </div>
+	   `;
 	}
 
 	/**
@@ -720,17 +837,16 @@ class WeatherApp {
 	 */
 	renderAirQuality() {
 		const aqiData = window.state.airQuality;
-		const container = document.getElementById('aqiGaugeContainer');
-		const breakdownContainer = document.getElementById('aqiBreakdownContainer');
-		if (!aqiData || !container) return;
+		const container = this.getElement('aqiGaugeContainer');
+		const breakdownContainer = this.getElement('aqiBreakdownContainer');
+		if (!aqiData || !container || !window.airQuality) return;
 
 		const usAqi = aqiData.current?.us_aqi || 35;
 		const status = window.airQuality.getAQIStatus(usAqi);
 
 		container.innerHTML = window.airQuality.renderRadialGaugeSVG(usAqi, 170);
-		document.getElementById('aqiStatement').textContent = status.statement;
-		document.getElementById('aqiRecommendation').textContent =
-			status.recommendation;
+		this.setText('aqiStatement', status.statement);
+		this.setText('aqiRecommendation', status.recommendation);
 
 		// Pollutants breakdown
 		if (breakdownContainer && aqiData.current) {
@@ -753,11 +869,11 @@ class WeatherApp {
 			breakdownContainer.innerHTML = list
 				.map(
 					(item) => `
-        <div class="aqi-pollutant-box">
-          <div class="pollutant-name">${item.name}</div>
-          <div class="pollutant-val">${item.val}</div>
-        </div>
-      `,
+	       <div class="aqi-pollutant-box">
+	         <div class="pollutant-name">${item.name}</div>
+	         <div class="pollutant-val">${item.val}</div>
+	       </div>
+	     `,
 				)
 				.join('');
 		}
@@ -770,9 +886,11 @@ class WeatherApp {
 		const current = window.state.currentWeather?.current;
 		const daily = window.state.currentWeather?.daily;
 		const aqiData = window.state.airQuality;
-		const moon = window.astronomy.getMoonPhase(new Date());
-		const container = document.getElementById('lifestyleGrid');
-		if (!current || !container) return;
+		const moon = window.astronomy
+			? window.astronomy.getMoonPhase(new Date())
+			: null;
+		const container = this.getElement('lifestyleGrid');
+		if (!current || !container || !window.lifestyle) return;
 
 		const scores = window.lifestyle.calculateIndices(
 			current,
@@ -793,16 +911,16 @@ class WeatherApp {
 		container.innerHTML = items
 			.map(
 				(item) => `
-      <div class="lifestyle-card">
-        <div class="lifestyle-header">
-          <div class="lifestyle-icon" style="color: ${item.color}"><i class="fa-solid ${item.icon}"></i></div>
-          <div class="lifestyle-score" style="color: ${item.color}">${item.score}${item.score <= 12 && item.title.includes('UV') ? '' : '%'}</div>
-        </div>
-        <div class="lifestyle-title">${item.title}</div>
-        <div class="lifestyle-status" style="background: ${item.color}22; color: ${item.color}">${item.status || item.level}</div>
-        <div class="lifestyle-advice">${item.advice}</div>
-      </div>
-    `,
+	     <div class="lifestyle-card">
+	       <div class="lifestyle-header">
+	         <div class="lifestyle-icon" style="color: ${item.color}"><i class="fa-solid ${item.icon}"></i></div>
+	         <div class="lifestyle-score" style="color: ${item.color}">${item.score}${item.score <= 12 && item.title.includes('UV') ? '' : '%'}</div>
+	       </div>
+	       <div class="lifestyle-title">${item.title}</div>
+	       <div class="lifestyle-status" style="background: ${item.color}22; color: ${item.color}">${item.status || item.level}</div>
+	       <div class="lifestyle-advice">${item.advice}</div>
+	     </div>
+	   `,
 			)
 			.join('');
 	}
@@ -813,16 +931,21 @@ class WeatherApp {
 	renderHistoricalComparison() {
 		const hist = window.state.historicalWeather;
 		const cur = window.state.currentWeather;
-		const container = document.getElementById('historicalComparisonContainer');
+		const container = this.getElement('historicalComparisonContainer');
 		if (!hist || !cur || !container) return;
 
 		const { tempUnit } = window.state.prefs;
-		const curMax = cur.daily?.temperature_2m_max[0];
+		const curMax = cur.daily?.temperature_2m_max?.[0];
 		const histMax = hist.daily?.temperature_2m_max
 			? hist.daily.temperature_2m_max[0]
 			: null;
 
-		if (histMax === null || histMax === undefined) {
+		if (
+			curMax === undefined ||
+			curMax === null ||
+			histMax === null ||
+			histMax === undefined
+		) {
 			container.innerHTML =
 				'<div class="hist-empty">Historical archive data unavailable for this coordinate.</div>';
 			return;
@@ -833,42 +956,42 @@ class WeatherApp {
 		const isWarmer = deltaC > 0;
 
 		container.innerHTML = `
-      <div class="hist-card">
-        <div class="hist-metric">
-          <div class="hist-val-box">
-            <span class="hist-label">Today</span>
-            <span class="hist-temp">${window.weatherAPI.convertTemp(curMax, tempUnit)}°</span>
-          </div>
-          <div class="hist-vs">VS</div>
-          <div class="hist-val-box">
-            <span class="hist-label">This Day Last Year</span>
-            <span class="hist-temp">${window.weatherAPI.convertTemp(histMax, tempUnit)}°</span>
-          </div>
-        </div>
-        <div class="hist-delta ${isWarmer ? 'warmer' : 'cooler'}">
-          <i class="fa-solid fa-${isWarmer ? 'arrow-trend-up' : 'arrow-trend-down'}"></i>
-          <span>${deltaSign}${deltaC}°C ${isWarmer ? 'warmer' : 'cooler'} than exactly 1 year ago</span>
-        </div>
-      </div>
-    `;
+	     <div class="hist-card">
+	       <div class="hist-metric">
+	         <div class="hist-val-box">
+	           <span class="hist-label">Today</span>
+	           <span class="hist-temp">${window.weatherAPI.convertTemp(curMax, tempUnit)}°</span>
+	         </div>
+	         <div class="hist-vs">VS</div>
+	         <div class="hist-val-box">
+	           <span class="hist-label">This Day Last Year</span>
+	           <span class="hist-temp">${window.weatherAPI.convertTemp(histMax, tempUnit)}°</span>
+	         </div>
+	       </div>
+	       <div class="hist-delta ${isWarmer ? 'warmer' : 'cooler'}">
+	         <i class="fa-solid fa-${isWarmer ? 'arrow-trend-up' : 'arrow-trend-down'}"></i>
+	         <span>${deltaSign}${deltaC}°C ${isWarmer ? 'warmer' : 'cooler'} than exactly 1 year ago</span>
+	       </div>
+	     </div>
+	   `;
 	}
 
 	/**
 	 * Render Saved Locations Quick Pills
 	 */
 	renderSavedLocations() {
-		const list = window.state.savedLocations;
-		const container = document.getElementById('savedLocationsList');
+		const list = window.state.savedLocations || [];
+		const container = this.getElement('savedLocationsList');
 		if (!container) return;
 
 		container.innerHTML = list
 			.map(
 				(loc) => `
-      <button class="saved-city-pill" data-lat="${loc.latitude}" data-lon="${loc.longitude}" data-name="${loc.name}" data-country="${loc.country}" data-code="${loc.country_code}" data-tz="${loc.timezone}">
-        <span class="pill-flag">${window.weatherAPI.getCountryFlagEmoji(loc.country_code)}</span>
-        <span class="pill-name">${loc.name}</span>
-      </button>
-    `,
+	     <button class="saved-city-pill" data-lat="${loc.latitude}" data-lon="${loc.longitude}" data-name="${loc.name}" data-country="${loc.country}" data-code="${loc.country_code}" data-tz="${loc.timezone}">
+	       <span class="pill-flag">${window.weatherAPI.getCountryFlagEmoji(loc.country_code)}</span>
+	       <span class="pill-name">${loc.name}</span>
+	     </button>
+	   `,
 			)
 			.join('');
 
@@ -888,7 +1011,7 @@ class WeatherApp {
 	}
 
 	updateSaveButtonState(isSaved) {
-		const btn = document.getElementById('saveLocationBtn');
+		const btn = this.getElement('saveLocationBtn');
 		if (btn) {
 			if (isSaved) {
 				btn.classList.add('saved');
@@ -908,18 +1031,24 @@ class WeatherApp {
 		const weatherA = window.state.currentWeather;
 		const cityB = window.state.comparisonLocation;
 		const weatherB = window.state.comparisonWeather;
-		const container = document.getElementById('comparisonDisplayArea');
+		const container = this.getElement('comparisonDisplayArea');
 		if (!container) return;
 
 		const { tempUnit, windUnit } = window.state.prefs;
 
-		if (!cityB || !weatherB) {
+		if (
+			!cityB ||
+			!weatherB ||
+			!weatherB.current ||
+			!weatherA ||
+			!weatherA.current
+		) {
 			container.innerHTML = `
-        <div class="compare-placeholder">
-          <i class="fa-solid fa-magnifying-glass"></i>
-          <p>Search and select a 2nd city above to compare weather parameters side-by-side.</p>
-        </div>
-      `;
+	       <div class="compare-placeholder">
+	         <i class="fa-solid fa-magnifying-glass"></i>
+	         <p>Search and select a 2nd city above to compare weather parameters side-by-side.</p>
+	       </div>
+	     `;
 			return;
 		}
 
@@ -928,43 +1057,44 @@ class WeatherApp {
 		const diffTemp = (tempB - tempA).toFixed(1);
 
 		container.innerHTML = `
-      <div class="comparison-grid">
-        <div class="compare-col">
-          <div class="compare-city-title">${window.weatherAPI.getCountryFlagEmoji(cityA.country_code)} ${cityA.name}</div>
-          <div class="compare-big-temp">${window.weatherAPI.convertTemp(tempA, tempUnit)}°</div>
-          <div class="compare-stat"><span>Humidity:</span> <b>${weatherA.current.relative_humidity_2m}%</b></div>
-          <div class="compare-stat"><span>Wind:</span> <b>${window.weatherAPI.convertWind(weatherA.current.wind_speed_10m, windUnit)} ${windUnit}</b></div>
-          <div class="compare-stat"><span>Pressure:</span> <b>${Math.round(weatherA.current.surface_pressure)} hPa</b></div>
-          <div class="compare-stat"><span>UV Index:</span> <b>${weatherA.current.uv_index || 0}</b></div>
-        </div>
+	     <div class="comparison-grid">
+	       <div class="compare-col">
+	         <div class="compare-city-title">${window.weatherAPI.getCountryFlagEmoji(cityA.country_code)} ${cityA.name}</div>
+	         <div class="compare-big-temp">${window.weatherAPI.convertTemp(tempA, tempUnit)}°</div>
+	         <div class="compare-stat"><span>Humidity:</span> <b>${weatherA.current.relative_humidity_2m}%</b></div>
+	         <div class="compare-stat"><span>Wind:</span> <b>${window.weatherAPI.convertWind(weatherA.current.wind_speed_10m, windUnit)} ${windUnit}</b></div>
+	         <div class="compare-stat"><span>Pressure:</span> <b>${Math.round(weatherA.current.surface_pressure)} hPa</b></div>
+	         <div class="compare-stat"><span>UV Index:</span> <b>${weatherA.current.uv_index || 0}</b></div>
+	       </div>
 
-        <div class="compare-delta-col">
-          <div class="compare-delta-tag ${diffTemp >= 0 ? 'warmer' : 'cooler'}">
-            ${diffTemp >= 0 ? `+${diffTemp}` : diffTemp}°C Delta
-          </div>
-        </div>
+	       <div class="compare-delta-col">
+	         <div class="compare-delta-tag ${diffTemp >= 0 ? 'warmer' : 'cooler'}">
+	           ${diffTemp >= 0 ? `+${diffTemp}` : diffTemp}°C Delta
+	         </div>
+	       </div>
 
-        <div class="compare-col">
-          <div class="compare-city-title">${window.weatherAPI.getCountryFlagEmoji(cityB.country_code)} ${cityB.name}</div>
-          <div class="compare-big-temp">${window.weatherAPI.convertTemp(tempB, tempUnit)}°</div>
-          <div class="compare-stat"><span>Humidity:</span> <b>${weatherB.current.relative_humidity_2m}%</b></div>
-          <div class="compare-stat"><span>Wind:</span> <b>${window.weatherAPI.convertWind(weatherB.current.wind_speed_10m, windUnit)} ${windUnit}</b></div>
-          <div class="compare-stat"><span>Pressure:</span> <b>${Math.round(weatherB.current.surface_pressure)} hPa</b></div>
-          <div class="compare-stat"><span>UV Index:</span> <b>${weatherB.current.uv_index || 0}</b></div>
-        </div>
-      </div>
-    `;
+	       <div class="compare-col">
+	         <div class="compare-city-title">${window.weatherAPI.getCountryFlagEmoji(cityB.country_code)} ${cityB.name}</div>
+	         <div class="compare-big-temp">${window.weatherAPI.convertTemp(tempB, tempUnit)}°</div>
+	         <div class="compare-stat"><span>Humidity:</span> <b>${weatherB.current.relative_humidity_2m}%</b></div>
+	         <div class="compare-stat"><span>Wind:</span> <b>${window.weatherAPI.convertWind(weatherB.current.wind_speed_10m, windUnit)} ${windUnit}</b></div>
+	         <div class="compare-stat"><span>Pressure:</span> <b>${Math.round(weatherB.current.surface_pressure)} hPa</b></div>
+	         <div class="compare-stat"><span>UV Index:</span> <b>${weatherB.current.uv_index || 0}</b></div>
+	       </div>
+	     </div>
+	   `;
 	}
 
 	/**
 	 * Preview Export Share Card inside modal
 	 */
 	async previewExportCard() {
-		const previewContainer = document.getElementById('exportCardPreview');
+		const previewContainer = this.getElement('exportCardPreview');
 		if (
 			!previewContainer ||
 			!window.state.currentLocation ||
-			!window.state.currentWeather
+			!window.state.currentWeather ||
+			!window.cardExporter
 		)
 			return;
 
@@ -991,7 +1121,7 @@ class WeatherApp {
 	 */
 	updateAudioState() {
 		const isEnabled = window.state.prefs.audioEnabled;
-		const btn = document.getElementById('audioToggleBtn');
+		const btn = this.getElement('audioToggleBtn');
 		if (btn) {
 			if (isEnabled) {
 				btn.classList.add('playing');
@@ -1003,12 +1133,14 @@ class WeatherApp {
 		}
 
 		if (!isEnabled) {
-			window.weatherAudio.stopAll();
+			if (window.weatherAudio?.stopAll) {
+				window.weatherAudio.stopAll();
+			}
 			return;
 		}
 
 		const current = window.state.currentWeather?.current;
-		if (current) {
+		if (current && window.weatherAudio?.playWeatherSound) {
 			const isDay = current.is_day === 1 || current.is_day === true;
 			const codeInfo = window.weatherAPI.getWeatherCodeInfo(
 				current.weather_code,
@@ -1026,7 +1158,7 @@ class WeatherApp {
 		this.renderDailyForecast();
 		this.renderHourlyCards();
 		this.renderHistoricalComparison();
-		if (window.state.currentWeather) {
+		if (window.state.currentWeather && window.weatherCharts) {
 			window.weatherCharts.renderHourlyChart(
 				window.state.currentWeather,
 				window.state.airQuality,
@@ -1037,7 +1169,7 @@ class WeatherApp {
 	}
 
 	showLoading(show = true) {
-		const loader = document.getElementById('globalLoader');
+		const loader = this.getElement('globalLoader');
 		if (loader) {
 			if (show) loader.classList.add('active');
 			else loader.classList.remove('active');
@@ -1045,7 +1177,7 @@ class WeatherApp {
 	}
 
 	showToast(message, duration = 3000) {
-		const toast = document.getElementById('appToast');
+		const toast = this.getElement('appToast');
 		if (toast) {
 			toast.textContent = message;
 			toast.classList.add('show');
