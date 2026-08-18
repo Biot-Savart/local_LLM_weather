@@ -1,0 +1,742 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1.0"
+		/>
+		<title>Atmosphere — Interactive Showcase Weather Web Application</title>
+		<meta
+			name="description"
+			content="State-of-the-art interactive weather web application with dynamic atmospheric canvas, procedural Web Audio soundscapes, solar arc, astronomy, 24h time machine, and interactive map."
+		/>
+		<meta
+			name="theme-color"
+			content="#090d16"
+		/>
+
+		<!-- Google Fonts (Inter & Plus Jakarta Sans) -->
+		<link
+			rel="preconnect"
+			href="https://fonts.googleapis.com"
+		/>
+		<link
+			rel="preconnect"
+			href="https://fonts.gstatic.com"
+			crossorigin
+		/>
+		<link
+			href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap"
+			rel="stylesheet"
+		/>
+
+		<!-- Font Awesome Icons 6 CDN -->
+		<link
+			rel="stylesheet"
+			href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+		/>
+
+		<!-- Leaflet CSS CDN -->
+		<link
+			rel="stylesheet"
+			href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+		/>
+
+		<!-- App Stylesheet -->
+		<link
+			rel="stylesheet"
+			href="css/style.css"
+		/>
+	</head>
+	<body>
+		<!-- Dynamic Atmospheric Canvas Background -->
+		<canvas id="weatherCanvas"></canvas>
+		<div class="atmosphere-overlay"></div>
+
+		<!-- Global Spinner Loader -->
+		<div
+			id="globalLoader"
+			class="global-loader"
+		>
+			<div class="spinner"></div>
+			<span>Updating Atmosphere...</span>
+		</div>
+
+		<!-- App Toast Notification -->
+		<div
+			id="appToast"
+			class="app-toast"
+		></div>
+
+		<!-- Main App Viewport Container -->
+		<div class="app-container">
+			<!-- Top Navigation Header -->
+			<header class="app-header glass-card">
+				<div class="brand-section">
+					<div class="brand-logo-icon">
+						<i class="fa-solid fa-cloud-sun"></i>
+					</div>
+					<div class="brand-text">
+						<h1>ATMOSPHERE</h1>
+						<p>Weather Intelligence</p>
+					</div>
+				</div>
+
+				<!-- Search Input with Live Autocomplete -->
+				<div class="search-container">
+					<div class="search-input-wrapper">
+						<i class="fa-solid fa-magnifying-glass"></i>
+						<input
+							type="text"
+							id="citySearchInput"
+							class="search-input"
+							placeholder="Search any city or coordinates worldwide..."
+							autocomplete="off"
+						/>
+						<button
+							id="currentLocationBtn"
+							class="geo-btn"
+							title="Use Current GPS Location"
+						>
+							<i class="fa-solid fa-crosshairs"></i>
+						</button>
+					</div>
+					<div
+						id="searchResultsDropdown"
+						class="search-dropdown"
+					></div>
+				</div>
+
+				<!-- Action Icons / Quick Controls -->
+				<div class="header-actions">
+					<!-- Procedural Audio Soundscape Controls -->
+					<div
+						class="audio-control-wrapper"
+						title="Atmospheric Procedural Web Audio Soundscape"
+					>
+						<button
+							id="audioToggleBtn"
+							class="action-icon-btn"
+							title="Toggle Weather Audio"
+						>
+							<i class="fa-solid fa-volume-xmark"></i>
+						</button>
+						<input
+							type="range"
+							id="audioVolumeSlider"
+							class="audio-slider"
+							min="0"
+							max="1"
+							step="0.05"
+							value="0.35"
+							title="Sound Volume"
+						/>
+					</div>
+
+					<button
+						id="saveLocationBtn"
+						class="action-icon-btn"
+						title="Pin / Favorite City"
+					>
+						<i class="fa-regular fa-bookmark"></i>
+					</button>
+					<button
+						id="compareCitiesBtn"
+						class="action-icon-btn"
+						title="Compare Two Cities Side-by-Side"
+					>
+						<i class="fa-solid fa-code-compare"></i>
+					</button>
+					<button
+						id="exportCardBtn"
+						class="action-icon-btn"
+						title="Export / Share High-Res Weather Snapshot"
+					>
+						<i class="fa-solid fa-arrow-up-from-bracket"></i>
+					</button>
+					<button
+						id="settingsBtn"
+						class="action-icon-btn"
+						title="Unit Settings (°C/°F, km/h, hPa)"
+					>
+						<i class="fa-solid fa-gear"></i>
+					</button>
+				</div>
+			</header>
+
+			<!-- Quick Saved Locations Pills -->
+			<div
+				id="savedLocationsList"
+				class="saved-locations-bar"
+			></div>
+
+			<!-- Hero Weather Section -->
+			<section class="hero-weather-grid">
+				<!-- Main Live Hero Panel -->
+				<div class="hero-main-card glass-card">
+					<div class="hero-header">
+						<div class="city-title-wrapper">
+							<h2 id="cityName">--</h2>
+							<div
+								id="cityCountry"
+								class="city-subtitle"
+							>
+								Fetching latest weather data...
+							</div>
+						</div>
+						<div class="hero-badge-container">
+							<div class="live-indicator">
+								<span class="live-indicator-dot"></span>
+								LIVE DATA
+							</div>
+						</div>
+					</div>
+
+					<div class="hero-center-row">
+						<div class="hero-temp-block">
+							<div
+								id="currentTemp"
+								class="hero-temp"
+							>
+								--°
+							</div>
+							<div class="hero-temp-sub">
+								<div
+									id="feelsLikeTemp"
+									class="hero-feels"
+								>
+									Feels like --°
+								</div>
+								<div
+									id="heroHighLow"
+									class="hero-range"
+								>
+									H: --° • L: --°
+								</div>
+							</div>
+						</div>
+						<div class="hero-condition-block">
+							<div
+								id="currentConditionLabel"
+								class="hero-cond-label"
+							>
+								Loading...
+							</div>
+							<div
+								id="currentConditionDesc"
+								class="hero-cond-desc"
+							>
+								Syncing with atmospheric sensors...
+							</div>
+						</div>
+					</div>
+
+					<!-- 6-Metric Mini Gauge Grid -->
+					<div class="hero-metric-grid">
+						<div class="hero-metric-box">
+							<div class="metric-label">
+								<i class="fa-solid fa-wind"></i> Wind
+							</div>
+							<div
+								id="windMetric"
+								class="metric-value"
+							>
+								--
+							</div>
+						</div>
+						<div class="hero-metric-box">
+							<div class="metric-label">
+								<i class="fa-solid fa-compass"></i> Direction
+							</div>
+							<div
+								id="windDirMetric"
+								class="metric-value"
+							>
+								--
+							</div>
+						</div>
+						<div class="hero-metric-box">
+							<div class="metric-label">
+								<i class="fa-solid fa-droplet"></i> Humidity
+							</div>
+							<div
+								id="humidityMetric"
+								class="metric-value"
+							>
+								--
+							</div>
+						</div>
+						<div class="hero-metric-box">
+							<div class="metric-label">
+								<i class="fa-solid fa-sun"></i> UV Index
+							</div>
+							<div
+								id="uvMetric"
+								class="metric-value"
+							>
+								--
+							</div>
+						</div>
+						<div class="hero-metric-box">
+							<div class="metric-label">
+								<i class="fa-solid fa-gauge-high"></i> Pressure
+							</div>
+							<div
+								id="pressureMetric"
+								class="metric-value"
+							>
+								--
+							</div>
+						</div>
+						<div class="hero-metric-box">
+							<div class="metric-label">
+								<i class="fa-solid fa-cloud-rain"></i> Precip
+							</div>
+							<div
+								id="precipMetric"
+								class="metric-value"
+							>
+								--
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Historical "This Day Last Year" & Interactive Map preview -->
+				<div style="display: flex; flex-direction: column; gap: 20px">
+					<!-- Historical Card -->
+					<div class="glass-card">
+						<div class="card-header-row">
+							<h3 class="card-title">
+								<i class="fa-solid fa-clock-rotate-left"></i> This Day Last Year
+							</h3>
+						</div>
+						<div id="historicalComparisonContainer">
+							<div class="hist-empty">
+								Loading historical archive comparison...
+							</div>
+						</div>
+					</div>
+
+					<!-- Interactive Map Preview Card -->
+					<div
+						class="glass-card"
+						style="padding: 16px"
+					>
+						<div
+							class="card-header-row"
+							style="margin-bottom: 12px"
+						>
+							<h3 class="card-title">
+								<i class="fa-solid fa-map-location-dot"></i> Interactive Map
+							</h3>
+							<span style="font-size: 0.75rem; color: var(--text-muted)"
+								>Click map to fetch</span
+							>
+						</div>
+						<div class="map-container-box">
+							<div id="weatherMap"></div>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<!-- 24-Hour Time Machine / Scrubber -->
+			<section class="glass-card time-scrubber-card">
+				<div class="scrubber-header">
+					<div class="scrubber-title">
+						<i class="fa-solid fa-timeline"></i> 24-Hour Time Machine Simulation
+					</div>
+					<div style="display: flex; align-items: center; gap: 10px">
+						<span
+							id="scrubberTimeDisplay"
+							class="scrubber-time-badge"
+							>Live (Now)</span
+						>
+						<button
+							id="resetScrubberBtn"
+							class="reset-scrubber-btn"
+						>
+							Reset to Live
+						</button>
+					</div>
+				</div>
+				<div class="scrubber-slider-wrapper">
+					<input
+						type="range"
+						id="timeScrubber"
+						class="scrubber-range"
+						min="0"
+						max="47"
+						value="0"
+						step="1"
+					/>
+					<div class="scrubber-ticks">
+						<span>Now</span>
+						<span>+6h</span>
+						<span>+12h</span>
+						<span>+18h</span>
+						<span>+24h</span>
+						<span>+36h</span>
+						<span>+48h</span>
+					</div>
+				</div>
+			</section>
+
+			<!-- Hourly Carousel -->
+			<section class="glass-card">
+				<div class="card-header-row">
+					<h3 class="card-title">
+						<i class="fa-solid fa-clock"></i> Hourly Forecast
+					</h3>
+				</div>
+				<div
+					id="hourlyCardsContainer"
+					class="hourly-carousel-wrapper"
+				></div>
+			</section>
+
+			<!-- Interactive Charts Section (Chart.js) -->
+			<section class="glass-card">
+				<div class="card-header-row">
+					<h3 class="card-title">
+						<i class="fa-solid fa-chart-line"></i> Hourly Forecast Dynamics
+					</h3>
+					<div class="chart-tabs-group">
+						<button
+							class="chart-tab-btn active"
+							data-tab="temp"
+						>
+							Temperature & Rain
+						</button>
+						<button
+							class="chart-tab-btn"
+							data-tab="wind"
+						>
+							Wind & Gusts
+						</button>
+						<button
+							class="chart-tab-btn"
+							data-tab="aqi"
+						>
+							UV Index
+						</button>
+					</div>
+				</div>
+				<div class="chart-canvas-container">
+					<canvas id="hourlyChartCanvas"></canvas>
+				</div>
+			</section>
+
+			<!-- 7-Day Extended Forecast Grid -->
+			<section class="glass-card">
+				<div class="card-header-row">
+					<h3 class="card-title">
+						<i class="fa-solid fa-calendar-week"></i> 7-Day Extended Forecast
+					</h3>
+				</div>
+				<div
+					id="dailyForecastContainer"
+					class="daily-grid"
+				></div>
+			</section>
+
+			<!-- Astronomy & Air Quality 2-Column Row -->
+			<section style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px">
+				<!-- Astronomy & Solar Arc -->
+				<div class="glass-card">
+					<div class="card-header-row">
+						<h3 class="card-title">
+							<i class="fa-solid fa-sun-plant-wilt"></i> Solar Cycle & Moon
+						</h3>
+					</div>
+					<div class="astronomy-grid">
+						<div class="solar-arc-container">
+							<div id="solarArcWrapper"></div>
+							<div class="solar-stats-row">
+								<div class="solar-stat-item">
+									<span>Daylight</span>
+									<b id="dayDuration">--</b>
+								</div>
+								<div class="solar-stat-item">
+									<span>Golden Hour</span>
+									<b id="goldenHour">--</b>
+								</div>
+							</div>
+						</div>
+						<div
+							id="moonPhaseWrapper"
+							class="moon-card-inner"
+						></div>
+					</div>
+				</div>
+
+				<!-- Air Quality Gauge & Breakdown -->
+				<div class="glass-card">
+					<div class="card-header-row">
+						<h3 class="card-title">
+							<i class="fa-solid fa-leaf"></i> Air Quality Index (AQI)
+						</h3>
+					</div>
+					<div class="aqi-grid-layout">
+						<div
+							id="aqiGaugeContainer"
+							class="aqi-gauge-wrapper"
+						></div>
+						<div class="aqi-info-column">
+							<div class="aqi-text-box">
+								<div
+									id="aqiStatement"
+									class="aqi-statement"
+								>
+									Analyzing air metrics...
+								</div>
+								<div
+									id="aqiRecommendation"
+									class="aqi-recommendation"
+								>
+									--
+								</div>
+							</div>
+							<div
+								id="aqiBreakdownContainer"
+								class="aqi-breakdown-grid"
+							></div>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<!-- Smart Lifestyle & Activity Indices Grid -->
+			<section class="glass-card">
+				<div class="card-header-row">
+					<h3 class="card-title">
+						<i class="fa-solid fa-person-hiking"></i> Smart Lifestyle & Activity
+						Indices
+					</h3>
+				</div>
+				<div
+					id="lifestyleGrid"
+					class="lifestyle-grid"
+				></div>
+			</section>
+
+			<!-- Footer -->
+			<footer
+				style="
+					text-align: center;
+					color: var(--text-dim);
+					font-size: 0.8rem;
+					padding: 20px 0;
+				"
+			>
+				Atmosphere Showcase • Built with Vanilla JavaScript, HTML5 & CSS3 • Data
+				powered by Open-Meteo & OpenStreetMap • Ready for GitLab Pages
+			</footer>
+		</div>
+
+		<!-- ========================================================================
+       MODALS: City Comparison, Export Card, Settings
+       ======================================================================== -->
+
+		<!-- City Comparison Modal -->
+		<div
+			id="compareModal"
+			class="modal-overlay"
+		>
+			<div class="modal-box wide">
+				<div class="modal-header">
+					<h3 class="modal-title">
+						<i class="fa-solid fa-code-compare"></i> Side-by-Side City
+						Comparison
+					</h3>
+					<button
+						id="closeCompareModal"
+						class="modal-close-btn"
+					>
+						<i class="fa-solid fa-xmark"></i>
+					</button>
+				</div>
+				<div
+					class="search-input-wrapper"
+					style="margin-bottom: 14px"
+				>
+					<i class="fa-solid fa-magnifying-glass"></i>
+					<input
+						type="text"
+						id="compareCitySearch"
+						class="search-input"
+						placeholder="Search second city to compare..."
+						autocomplete="off"
+					/>
+				</div>
+				<div
+					id="compareSearchResults"
+					class="search-dropdown"
+					style="position: relative; top: 0; max-height: 180px"
+				></div>
+				<div id="comparisonDisplayArea"></div>
+			</div>
+		</div>
+
+		<!-- Share & Export Card Modal -->
+		<div
+			id="exportModal"
+			class="modal-overlay"
+		>
+			<div class="modal-box">
+				<div class="modal-header">
+					<h3 class="modal-title">
+						<i class="fa-solid fa-camera-retro"></i> Weather Snapshot Card
+					</h3>
+					<button
+						id="closeExportModal"
+						class="modal-close-btn"
+					>
+						<i class="fa-solid fa-xmark"></i>
+					</button>
+				</div>
+				<div
+					id="exportCardPreview"
+					style="margin: 10px 0"
+				></div>
+				<div class="export-actions">
+					<button
+						id="downloadCardBtn"
+						class="btn-primary"
+					>
+						<i class="fa-solid fa-download"></i> Download High-Res Image (PNG)
+					</button>
+				</div>
+			</div>
+		</div>
+
+		<!-- Settings & Unit Switching Modal -->
+		<div
+			id="settingsModal"
+			class="modal-overlay"
+		>
+			<div class="modal-box">
+				<div class="modal-header">
+					<h3 class="modal-title">
+						<i class="fa-solid fa-sliders"></i> Preferences & Units
+					</h3>
+					<button
+						id="closeSettingsModal"
+						class="modal-close-btn"
+					>
+						<i class="fa-solid fa-xmark"></i>
+					</button>
+				</div>
+				<div class="unit-setting-row">
+					<span>Temperature Unit</span>
+					<div class="unit-buttons">
+						<button
+							class="unit-btn active"
+							data-unit-group="temp"
+							data-unit-val="c"
+						>
+							°C (Celsius)
+						</button>
+						<button
+							class="unit-btn"
+							data-unit-group="temp"
+							data-unit-val="f"
+						>
+							°F (Fahrenheit)
+						</button>
+					</div>
+				</div>
+				<div class="unit-setting-row">
+					<span>Wind Speed Unit</span>
+					<div class="unit-buttons">
+						<button
+							class="unit-btn active"
+							data-unit-group="wind"
+							data-unit-val="kmh"
+						>
+							km/h
+						</button>
+						<button
+							class="unit-btn"
+							data-unit-group="wind"
+							data-unit-val="mph"
+						>
+							mph
+						</button>
+						<button
+							class="unit-btn"
+							data-unit-group="wind"
+							data-unit-val="knots"
+						>
+							knots
+						</button>
+						<button
+							class="unit-btn"
+							data-unit-group="wind"
+							data-unit-val="ms"
+						>
+							m/s
+						</button>
+					</div>
+				</div>
+				<div class="unit-setting-row">
+					<span>Precipitation Unit</span>
+					<div class="unit-buttons">
+						<button
+							class="unit-btn active"
+							data-unit-group="precip"
+							data-unit-val="mm"
+						>
+							mm
+						</button>
+						<button
+							class="unit-btn"
+							data-unit-group="precip"
+							data-unit-val="inch"
+						>
+							inches
+						</button>
+					</div>
+				</div>
+				<div class="unit-setting-row">
+					<span>Atmospheric Pressure</span>
+					<div class="unit-buttons">
+						<button
+							class="unit-btn active"
+							data-unit-group="pressure"
+							data-unit-val="hPa"
+						>
+							hPa
+						</button>
+						<button
+							class="unit-btn"
+							data-unit-group="pressure"
+							data-unit-val="inHg"
+						>
+							inHg
+						</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- CDN Scripts -->
+		<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+		<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+		<!-- Modular App Scripts -->
+		<script src="js/state.js"></script>
+		<script src="js/api.js"></script>
+		<script src="js/canvas-atmosphere.js"></script>
+		<script src="js/audio-engine.js"></script>
+		<script src="js/astronomy.js"></script>
+		<script src="js/air-quality.js"></script>
+		<script src="js/lifestyle.js"></script>
+		<script src="js/charts.js"></script>
+		<script src="js/weather-map.js"></script>
+		<script src="js/card-exporter.js"></script>
+		<script src="js/app.js"></script>
+	</body>
+</html>
