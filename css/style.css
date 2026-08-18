@@ -137,6 +137,8 @@ body {
    HEADER & NAVBAR
    ========================================================================== */
 .app-header {
+	position: relative;
+	z-index: 100;
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
@@ -182,8 +184,10 @@ body {
 }
 
 /* Search Bar & Autocomplete */
-.search-container {
+.search-container,
+.search-wrapper {
 	position: relative;
+	z-index: 1000;
 	flex: 1;
 	max-width: 480px;
 }
@@ -245,20 +249,52 @@ body {
 }
 
 /* Search Results Dropdown */
-.search-dropdown {
+.search-dropdown,
+.search-results-dropdown,
+#searchResultsDropdown,
+#searchResults {
 	position: absolute;
 	top: calc(100% + 8px);
 	left: 0;
 	width: 100%;
-	background: rgba(15, 23, 42, 0.94);
-	backdrop-filter: blur(20px);
+	background: rgba(15, 23, 42, 0.95);
+	backdrop-filter: blur(24px);
+	-webkit-backdrop-filter: blur(24px);
 	border: 1px solid var(--glass-border);
 	border-radius: var(--radius-md);
-	box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+	box-shadow:
+		0 16px 40px rgba(0, 0, 0, 0.6),
+		0 0 20px rgba(56, 189, 248, 0.12);
 	max-height: 340px;
 	overflow-y: auto;
 	display: none;
-	z-index: 100;
+	z-index: 1500;
+}
+
+.search-dropdown::-webkit-scrollbar,
+.search-results-dropdown::-webkit-scrollbar,
+#searchResultsDropdown::-webkit-scrollbar {
+	width: 6px;
+}
+
+.search-dropdown::-webkit-scrollbar-track,
+.search-results-dropdown::-webkit-scrollbar-track,
+#searchResultsDropdown::-webkit-scrollbar-track {
+	background: rgba(255, 255, 255, 0.02);
+	border-radius: var(--radius-full);
+}
+
+.search-dropdown::-webkit-scrollbar-thumb,
+.search-results-dropdown::-webkit-scrollbar-thumb,
+#searchResultsDropdown::-webkit-scrollbar-thumb {
+	background: rgba(255, 255, 255, 0.2);
+	border-radius: var(--radius-full);
+}
+
+.search-dropdown::-webkit-scrollbar-thumb:hover,
+.search-results-dropdown::-webkit-scrollbar-thumb:hover,
+#searchResultsDropdown::-webkit-scrollbar-thumb:hover {
+	background: var(--accent-blue);
 }
 
 .search-dropdown.active {
