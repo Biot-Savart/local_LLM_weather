@@ -289,19 +289,27 @@ class WeatherApp {
 				const q = e.target.value;
 				if (q.trim().length < 2) {
 					compareSearchResults.innerHTML = '';
+					compareSearchResults.classList.remove('active');
 					return;
 				}
 				setTimeout(async () => {
 					const results = await window.weatherAPI.searchLocations(q);
-					compareSearchResults.innerHTML = results
-						.map(
-							(loc) => `
-	           <div class="search-result-item" data-lat="${loc.latitude}" data-lon="${loc.longitude}" data-name="${loc.name}" data-country="${loc.country}">
-	             <span>${window.weatherAPI.getCountryFlagEmoji(loc.country_code)} <b>${loc.name}</b>, ${loc.country}</span>
-	           </div>
-	         `,
-						)
-						.join('');
+					if (results && results.length > 0) {
+						compareSearchResults.innerHTML = results
+							.map(
+								(loc) => `
+		           <div class="search-result-item" data-lat="${loc.latitude}" data-lon="${loc.longitude}" data-name="${loc.name}" data-country="${loc.country}">
+		             <span>${window.weatherAPI.getCountryFlagEmoji(loc.country_code)} <b>${loc.name}</b>, ${loc.country}</span>
+		           </div>
+		         `,
+							)
+							.join('');
+						compareSearchResults.classList.add('active');
+					} else {
+						compareSearchResults.innerHTML =
+							'<div class="search-empty">No matching cities found</div>';
+						compareSearchResults.classList.add('active');
+					}
 
 					compareSearchResults
 						.querySelectorAll('.search-result-item')
@@ -317,6 +325,7 @@ class WeatherApp {
 								window.state.comparisonLocation = locObj;
 								window.state.comparisonWeather = forecast;
 								compareSearchResults.innerHTML = '';
+								compareSearchResults.classList.remove('active');
 								compareSearchInput.value = '';
 								this.renderComparisonView();
 							});
