@@ -186,6 +186,13 @@
 							</div>
 						</div>
 						<div class="hero-badge-container">
+							<div
+								id="heroTimeBadge"
+								class="hero-time-badge"
+							>
+								<i class="fa-regular fa-clock"></i>
+								<span id="heroLocalTimeDisplay">--:--</span>
+							</div>
 							<div class="live-indicator">
 								<span class="live-indicator-dot"></span>
 								LIVE DATA
@@ -216,6 +223,21 @@
 								</div>
 							</div>
 						</div>
+
+						<!-- Dynamic Multi-Layered Animated Weather Art Showcase -->
+						<div
+							class="hero-visual-showcase"
+							id="heroWeatherArtContainer"
+							title="Dynamic Atmospheric Visual Simulation"
+						>
+							<div
+								id="heroWeatherArt"
+								class="hero-weather-art"
+							>
+								<!-- Rendered dynamically via WeatherApp -->
+							</div>
+						</div>
+
 						<div class="hero-condition-block">
 							<div
 								id="currentConditionLabel"
@@ -228,6 +250,54 @@
 								class="hero-cond-desc"
 							>
 								Syncing with atmospheric sensors...
+							</div>
+							<div
+								id="heroDaylightBadge"
+								class="hero-daylight-badge"
+							>
+								<i class="fa-solid fa-sun"></i>
+								<span id="heroDaylightStatus">Daylight</span>
+							</div>
+						</div>
+					</div>
+
+					<!-- Smart Weather Insight & Condition Briefing Banner -->
+					<div
+						id="heroInsightBanner"
+						class="hero-insight-banner"
+					>
+						<div class="insight-icon-bubble">
+							<i class="fa-solid fa-wand-magic-sparkles"></i>
+						</div>
+						<div class="insight-content">
+							<div class="insight-title">Atmosphere Intelligence</div>
+							<div
+								id="heroInsightText"
+								class="insight-text"
+							>
+								Analyzing atmospheric conditions...
+							</div>
+						</div>
+					</div>
+
+					<!-- Next 6-Hour Micro-Forecast Quick-Glance Ribbon -->
+					<div class="hero-micro-forecast-section">
+						<div class="micro-forecast-header">
+							<span class="micro-forecast-title">
+								<i class="fa-solid fa-bolt-lightning"></i> 6-Hour Micro-Outlook
+							</span>
+							<span
+								class="micro-forecast-subtitle"
+								id="microForecastRange"
+								>Next 6 Hours</span
+							>
+						</div>
+						<div
+							id="heroMicroForecastRibbon"
+							class="micro-forecast-ribbon"
+						>
+							<div class="micro-forecast-placeholder">
+								Loading micro-forecast...
 							</div>
 						</div>
 					</div>
@@ -299,6 +369,50 @@
 							>
 								--
 							</div>
+						</div>
+					</div>
+
+					<!-- Secondary Floating Stat Badges Row -->
+					<div class="hero-secondary-badges">
+						<div
+							class="hero-sec-badge"
+							title="Atmospheric Visibility"
+						>
+							<i class="fa-solid fa-eye"></i>
+							<span class="sec-badge-label">Visibility</span>
+							<strong id="visibilityMetric">--</strong>
+						</div>
+						<div
+							class="hero-sec-badge"
+							title="Cloud Coverage Percentage"
+						>
+							<i class="fa-solid fa-cloud"></i>
+							<span class="sec-badge-label">Clouds</span>
+							<strong id="cloudCoverMetric">--</strong>
+						</div>
+						<div
+							class="hero-sec-badge"
+							title="Atmospheric Dew Point Temperature"
+						>
+							<i class="fa-solid fa-temperature-half"></i>
+							<span class="sec-badge-label">Dew Point</span>
+							<strong id="dewPointMetric">--</strong>
+						</div>
+						<div
+							class="hero-sec-badge"
+							title="Peak Wind Gust Speed"
+						>
+							<i class="fa-solid fa-wind"></i>
+							<span class="sec-badge-label">Gusts</span>
+							<strong id="windGustMetric">--</strong>
+						</div>
+						<div
+							class="hero-sec-badge"
+							title="Daylight & Solar Schedule"
+						>
+							<i class="fa-solid fa-sun-plant-wilt"></i>
+							<span class="sec-badge-label">Daylight</span>
+							<strong id="daylightProgressMetric">--</strong>
 						</div>
 					</div>
 				</div>
