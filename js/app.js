@@ -115,6 +115,7 @@ class WeatherApp {
 				if (q.trim().length < 2) {
 					if (searchResults) {
 						searchResults.classList.remove('active');
+						searchResults.style.display = 'none';
 						searchResults.innerHTML = '';
 					}
 					return;
@@ -124,7 +125,43 @@ class WeatherApp {
 					if (searchResults) {
 						this.renderSearchResults(results, searchResults);
 					}
-				}, 250);
+				}, 200);
+			});
+
+			searchInput.addEventListener('focus', () => {
+				if (
+					searchInput.value.trim().length >= 2 &&
+					searchResults &&
+					searchResults.innerHTML.trim() !== ''
+				) {
+					searchResults.classList.add('active');
+					searchResults.style.display = 'block';
+				}
+			});
+
+			searchInput.addEventListener('keydown', async (e) => {
+				if (e.key === 'Enter') {
+					e.preventDefault();
+					const q = searchInput.value.trim();
+					if (q.length >= 2) {
+						clearTimeout(this.searchDebounceTimer);
+						const results = await window.weatherAPI.searchLocations(q);
+						if (results && results.length > 0) {
+							const first = results[0];
+							if (searchResults) {
+								searchResults.classList.remove('active');
+								searchResults.style.display = 'none';
+							}
+							searchInput.value = '';
+							await this.loadLocationWeather(first);
+						}
+					}
+				} else if (e.key === 'Escape') {
+					if (searchResults) {
+						searchResults.classList.remove('active');
+						searchResults.style.display = 'none';
+					}
+				}
 			});
 
 			// Close dropdown when clicked outside
@@ -135,6 +172,7 @@ class WeatherApp {
 					!searchResults.contains(e.target)
 				) {
 					searchResults.classList.remove('active');
+					searchResults.style.display = 'none';
 				}
 			});
 		}
@@ -516,6 +554,7 @@ class WeatherApp {
 			container.innerHTML =
 				'<div class="search-empty">No matching cities found</div>';
 			container.classList.add('active');
+			container.style.display = 'block';
 			return;
 		}
 
@@ -535,6 +574,7 @@ class WeatherApp {
 			.join('');
 
 		container.classList.add('active');
+		container.style.display = 'block';
 
 		// Add click listeners
 		container.querySelectorAll('.search-result-item').forEach((item) => {
@@ -550,6 +590,7 @@ class WeatherApp {
 				};
 
 				container.classList.remove('active');
+				container.style.display = 'none';
 				this.setValue('citySearchInput', '');
 				await this.loadLocationWeather(location);
 			});
